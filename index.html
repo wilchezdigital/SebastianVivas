@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sebastian Vivas | Growth & Strategy Professional</title>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-CRNRJZN5G0"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-CRNRJZN5G0');
+</script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
@@ -484,12 +493,19 @@ footer {
 
 .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px; }
 
-input[type="text"] {
+input[type="text"], textarea {
   width: 100%; padding: 14px; background: var(--input-bg); border: 1px solid #2a2a2a;
   border-radius: 12px; color: var(--text-main); font-size: 0.95rem;
+  font-family: inherit;
 }
 
-input[type="text"]:focus { border-color: var(--primary); outline: none; }
+textarea {
+  margin-top: 14px;
+  min-height: 96px;
+  resize: vertical;
+}
+
+input[type="text"]:focus, textarea:focus { border-color: var(--primary); outline: none; }
 
 button {
   background: var(--primary); border: none; color: #fff; padding: 14px 28px;
@@ -901,6 +917,27 @@ Transformo recursos existentes en sistemas de crecimiento sostenido.
 
 
 
+<!-- SECCIÓN: ESTRATEGIA IA -->
+<section>
+  <div class="ai-container" style="margin-bottom: 30px;">
+    <span class="ai-badge">INTELIGENCIA ARTIFICIAL</span>
+    <h3>Genera una Estrategia Growth</h3>
+    <p style="color: var(--text-muted);">
+      Ingresa tu industria y objetivo para que tengas un plan de 3 pasos basado en mi metodología de crecimiento real.
+    </p>
+    <div class="input-row">
+      <input type="text" id="industry-input" placeholder="Industria (ej. Servicios, Tecnología, Fintech...)">
+      <input type="text" id="goal-input" placeholder="Objetivo (ej. Más ventas, Reducir CAC, Escalar a Latam...)">
+    </div>
+    <textarea id="strategy-context" placeholder="Contexto opcional: ticket promedio, canal actual, país, equipo, presupuesto, principal bloqueo..."></textarea>
+    <button onclick="generateStrategy()">
+      Obtén una estrategia
+      <div class="loader" id="strategy-loader"></div>
+    </button>
+    <div class="ai-output" id="strategy-output"></div>
+  </div>
+</section>
+
 <section style="text-align:center; margin-bottom: 50px;">
   <h2 style="border:none;">¿Hablamos?</h2>
   <p style="color:var(--text-muted); margin-bottom:50px;">
@@ -925,21 +962,255 @@ Transformo recursos existentes en sistemas de crecimiento sostenido.
 </footer>
 
 <script>
+const N8N_WEBHOOK_URL = "https://n8n-latest-wj7o.onrender.com/webhook/portfolio-ia";
+const SPANISH_COUNTRIES = new Set([
+  "AR", "BO", "CL", "CO", "CR", "CU", "DO", "EC", "ES", "GQ", "GT", "HN",
+  "MX", "NI", "PA", "PE", "PR", "PY", "SV", "UY", "VE"
+]);
+let UI_LANG = /^es/i.test(navigator.language || "") ? "es" : "en";
 
-// ========= EXTRACTOR UNIVERSAL =========
+const UI_TEXT = {
+  es: {
+    hero: "Growth Marketer | Strategy | Automation | Data Interpretation",
+    heroLocation: "📍 España | 4 Continentes | 24 Países | 10+ Años Escalando Negocios",
+    impact: "Resumen de Impacto",
+    profile: "Perfil Estratégico",
+    stack: "Tecnologías y Conocimientos",
+    chatTitle: "Pregunta sobre mi trayectoria profesional",
+    chatCopy: "Haz cualquier pregunta sobre mi experiencia, mis certificaciones o cómo manejo la automatización.",
+    chatPlaceholder: "¿Qué resultados lograste en Grydd?",
+    chatButton: "Pregúntame sobre mi experiencia",
+    timeline: "Trayectoria Profesional",
+    global: "Datos Clave & Alcance Global",
+    recruiters: "Para Recruiters & Talent Teams",
+    clients: "Para Empresas & Startups",
+    education: "Formación Académica",
+    certs: "Certificaciones & Logros",
+    strategyTitle: "Genera una Estrategia Growth",
+    strategyCopy: "Ingresa tu industria y objetivo para que tengas un plan de 3 pasos basado en mi metodología de crecimiento real.",
+    industryPlaceholder: "Industria (ej. Servicios, Tecnología, Fintech...)",
+    goalPlaceholder: "Objetivo (ej. Más ventas, Reducir CAC, Escalar a Latam...)",
+    contextPlaceholder: "Contexto opcional: ticket promedio, canal actual, país, equipo, presupuesto, principal bloqueo...",
+    strategyButton: "Obtén una estrategia",
+    contactTitle: "¿Hablamos?",
+    contactCopy: "Estoy abierto a oportunidades estratégicas y proyectos de crecimiento.",
+    whatsapp: "Agendar conversación",
+    email: "Enviar email",
+    loading: "Pensando...",
+    strategyLoading: "Analizando mercado...",
+    empty: "Escribe una pregunta primero.",
+    strategyEmpty: "Escribe una industria y un objetivo para generar una estrategia útil.",
+    noText: "No se recibió respuesta válida.",
+    raw: "Respuesta cruda:",
+    error: "Error conectando con el servidor."
+  },
+  en: {
+    hero: "Growth Marketer | Strategy | Automation | Data Interpretation",
+    heroLocation: "📍 Spain | 4 Continents | 24 Countries | 10+ Years Scaling Businesses",
+    impact: "Impact Summary",
+    profile: "Strategic Profile",
+    stack: "Tech Stack & Expertise",
+    chatTitle: "Ask about my professional background",
+    chatCopy: "Ask anything about my experience, certifications, or how I handle automation.",
+    chatPlaceholder: "What results did you achieve at Grydd?",
+    chatButton: "Ask about my experience",
+    timeline: "Professional Timeline",
+    global: "Key Facts & Global Reach",
+    recruiters: "For Recruiters & Talent Teams",
+    clients: "For Companies & Startups",
+    education: "Academic Background",
+    certs: "Certifications & Achievements",
+    strategyTitle: "Generate a Growth Strategy",
+    strategyCopy: "Enter your industry and goal to get a 3-step plan based on my real growth methodology.",
+    industryPlaceholder: "Industry (e.g. Services, Tech, Fintech...)",
+    goalPlaceholder: "Goal (e.g. More sales, Lower CAC, Scale to LatAm...)",
+    contextPlaceholder: "Optional context: average ticket, current channel, country, team, budget, main blocker...",
+    strategyButton: "Get strategy",
+    contactTitle: "Let's talk",
+    contactCopy: "I am open to strategic opportunities and growth projects.",
+    whatsapp: "Schedule a call",
+    email: "Send email",
+    loading: "Thinking...",
+    strategyLoading: "Analyzing market...",
+    empty: "Please type a question first.",
+    strategyEmpty: "Add an industry and a goal to generate a useful strategy.",
+    noText: "No valid response received.",
+    raw: "Raw response:",
+    error: "Error connecting to the server."
+  }
+};
+
+const COPY_TRANSLATIONS_EN = {
+  "Incremento en Ventas Anuales": "Annual Sales Increase",
+  "Revenue generado en 3.5 meses": "Revenue generated in 3.5 months",
+  "Crecimiento de Tráfico Orgánico": "Organic Traffic Growth",
+  "Optimización de Conversión": "Conversion Optimization",
+  "Soy Growth Marketer con más de 10 años diseñando y ejecutando sistemas de crecimiento medible. Especializado en optimización de funnels, automatización avanzada y tomo decisiones basado en datos.": "I am a Growth Marketer with more than 10 years designing and executing measurable growth systems. I specialize in funnel optimization, advanced automation and data-based decision making.",
+  "He participado en más de 100 proyectos en 4 continentes y 9 países, colaborando con más de 70 empresas y marcas, escalando ingresos, optimizando eficiencia operativa y reduciendo fricciones en adquisición.": "I have worked on more than 100 projects across 4 continents and 9 countries, collaborating with more than 70 companies and brands to scale revenue, improve operational efficiency and reduce acquisition friction.",
+  "Mi enfoque combina estrategia, ejecución técnica y análisis cuantitativo. No trabajo con intuición, trabajo con métricas.": "My approach combines strategy, technical execution and quantitative analysis. I do not work on intuition; I work with metrics.",
+  "Transformo recursos existentes en sistemas de crecimiento sostenido.": "I turn existing resources into sustainable growth systems.",
+  "Idiomas": "Languages",
+  "Español": "Spanish",
+  "Inglés": "English",
+  "Italiano": "Italian",
+  "Francés": "French",
+  "Turco": "Turkish",
+  "Nativo": "Native",
+  "Bilingüe": "Bilingual",
+  "Conversacional": "Conversational",
+  "Elemental": "Elementary",
+  "2025 – Presente": "2025 – Present",
+  "Gestión estratégica de comunicación y posicionamiento institucional.": "Strategic communication and institutional positioning.",
+  "Liderazgo de equipos de alto rendimiento. Logro de 5X ventas en 8 meses, +40% tráfico, +150% eficiencia operativa y +200% leads.": "Leadership of high-performance teams. Achieved 5X sales in 8 months, +40% traffic, +150% operational efficiency and +200% leads.",
+  "Internacionalización de marca, aumento del 40% en Brand Awareness. Desarrollo e implementación de estrategia SaaS B2B.": "Brand internationalization and +40% brand awareness growth. Development and implementation of a B2B SaaS strategy.",
+  "Optimización ASO global. Posicionamiento de la aplicación como #1 en descargas en la categoría Tools.": "Global ASO optimization. Positioned the app as #1 in downloads in the Tools category.",
+  "Desarrollo de estrategias audiovisuales para el seguimiento de usuarios web y captación. Ejecución de estrategias de expansión digital en EE.UU., México y Perú.": "Development of audiovisual strategies for web user tracking and acquisition. Execution of digital expansion strategies in the U.S., Mexico and Peru.",
+  "Presencia en 4 Continentes": "Presence Across 4 Continents",
+  "Años de Experiencia": "Years of Experience",
+  "Liderando estrategias digitales y crecimiento.": "Leading digital and growth strategies.",
+  "Países Activos": "Active Countries",
+  "Operativa estratégica en mercados internacionales.": "Strategic operations in international markets.",
+  "Proyectos Ejecutados": "Projects Executed",
+  "Colaborando con más de 70 marcas globales.": "Collaborating with more than 70 global brands.",
+  "Si buscas un perfil que combine estrategia, ejecución técnica y mentalidad de negocio, aquí encontrarás resultados reales, no solo títulos.": "If you are looking for a profile that combines strategy, technical execution and business thinking, this is about real results, not just titles.",
+  "✅ Escalamiento comprobado 5X": "Proven 5X scaling",
+  "✅ Automatización avanzada con IA y APIs": "Advanced automation with AI and APIs",
+  "✅ Experiencia SaaS B2B y performance global": "B2B SaaS and global performance experience",
+  "No implemento campañas. Construyo sistemas de crecimiento.": "I do not just run campaigns. I build growth systems.",
+  "✅ Reducción de fricción en adquisición": "Reduced acquisition friction",
+  "✅ Optimización real de CAC y conversión": "Real CAC and conversion optimization",
+  "✅ Automatización con n8n + IA": "Automation with n8n + AI",
+  "Business Administration and Strategic Management": "Business Administration and Strategic Management",
+  "Diseño y desarrollo de estrategias de Growth Hacking – IEBS Business School.": "Design and development of Growth Hacking strategies – IEBS Business School.",
+  "De 0 a Super PM con Inteligencia Artificial – Aprin®": "From 0 to Super PM with Artificial Intelligence – Aprin®",
+  "Certificación de nivel de idioma.": "Language level certification.",
+  "Estoy abierto a oportunidades estratégicas y proyectos de crecimiento.": "I am open to strategic opportunities and growth projects."
+};
+
+function translateTextNodes(lang) {
+  if (lang !== "en") return;
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  nodes.forEach((node) => {
+    const original = node.textContent.replace(/\s+/g, " ").trim();
+    if (!original) return;
+    const translated = COPY_TRANSLATIONS_EN[original];
+    if (translated) node.textContent = node.textContent.replace(node.textContent.trim(), translated);
+  });
+}
+
+function setText(node, value) {
+  if (node && typeof value === "string") node.textContent = value;
+}
+
+function applyLanguage(lang) {
+  const text = UI_TEXT[lang] || UI_TEXT.es;
+  document.documentElement.lang = lang;
+
+  setText(document.querySelector("header > p:nth-of-type(1)"), text.hero);
+  setText(document.querySelector("header > p:nth-of-type(2)"), text.heroLocation);
+
+  const topSections = document.querySelectorAll("section > h2");
+  [
+    text.impact,
+    text.profile,
+    text.stack,
+    text.timeline,
+    text.global,
+    text.recruiters,
+    text.clients,
+    text.education,
+    text.certs,
+    text.contactTitle
+  ].forEach((label, idx) => setText(topSections[idx], label));
+
+  const aiBlocks = document.querySelectorAll("section .ai-container");
+  if (aiBlocks[0]) {
+    setText(aiBlocks[0].querySelector("h3"), text.chatTitle);
+    setText(aiBlocks[0].querySelector("p"), text.chatCopy);
+    const input = aiBlocks[0].querySelector("#chat-input");
+    if (input) input.placeholder = text.chatPlaceholder;
+    const btn = aiBlocks[0].querySelector("button");
+    if (btn) btn.childNodes[0].textContent = text.chatButton;
+  }
+
+  if (aiBlocks[1]) {
+    setText(aiBlocks[1].querySelector("h3"), text.strategyTitle);
+    setText(aiBlocks[1].querySelector("p"), text.strategyCopy);
+    const industry = document.getElementById("industry-input");
+    const goal = document.getElementById("goal-input");
+    const context = document.getElementById("strategy-context");
+    if (industry) industry.placeholder = text.industryPlaceholder;
+    if (goal) goal.placeholder = text.goalPlaceholder;
+    if (context) context.placeholder = text.contextPlaceholder;
+    const btn = aiBlocks[1].querySelector("button");
+    if (btn) btn.childNodes[0].textContent = text.strategyButton;
+  }
+
+  const contactSection = Array.from(document.querySelectorAll("section")).find((section) =>
+    (section.textContent || "").includes("Estoy abierto a oportunidades estratégicas y proyectos de crecimiento.")
+  );
+  if (contactSection) {
+    const p = contactSection.querySelector("p");
+    if (p) setText(p, text.contactCopy);
+    const links = contactSection.querySelectorAll("a");
+    if (links[0]) setText(links[0], text.whatsapp);
+    if (links[1]) setText(links[1], text.email);
+  }
+
+  translateTextNodes(lang);
+}
+
 function extractText(data) {
   return (
-    data?.output?.[0]?.content?.[0]?.text ||   // OpenAI v2
-    data?.content?.parts?.[0]?.text ||         // Gemini
-    data?.text ||                              // Simplify Output
-    data?.response ||                          // Custom JSON
-    data?.message ||                           // Alternativo
-    null
+    data?.ok === false ? "" :
+    data?.text ||
+    data?.response ||
+    data?.message ||
+    data?.answer ||
+    data?.output?.[0]?.content?.[0]?.text ||
+    data?.content?.parts?.[0]?.text ||
+    data?.result ||
+    ""
   );
 }
 
+async function readResponseSafe(response) {
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    return await response.json();
+  }
+  const text = await response.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { text };
+  }
+}
+
+function fallbackLanguage() {
+  return /^es/i.test(navigator.language || "") ? "es" : "en";
+}
+
+async function detectLanguageByLocation() {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), 2500);
+  try {
+    const response = await fetch("https://ipapi.co/json/", { signal: controller.signal });
+    clearTimeout(id);
+    if (!response.ok) return fallbackLanguage();
+    const data = await response.json();
+    const country = String(data?.country_code || "").toUpperCase();
+    return SPANISH_COUNTRIES.has(country) ? "es" : "en";
+  } catch {
+    clearTimeout(id);
+    return fallbackLanguage();
+  }
+}
+
 // ========= FETCH CON TIMEOUT =========
-async function fetchWithTimeout(url, options = {}, timeout = 15000) {
+async function fetchWithTimeout(url, options = {}, timeout = 120000) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
 
@@ -952,6 +1223,11 @@ async function fetchWithTimeout(url, options = {}, timeout = 15000) {
     return response;
   } catch (error) {
     clearTimeout(id);
+    if (error?.name === "AbortError") {
+      throw new Error(UI_LANG === "en"
+        ? "The server took too long to respond. Please try again; Render or the AI model may still be waking up."
+        : "El servidor tardó demasiado en responder. Inténtalo de nuevo; Render o el modelo de IA pueden estar despertando.");
+    }
     throw error;
   }
 }
@@ -960,38 +1236,47 @@ async function fetchWithTimeout(url, options = {}, timeout = 15000) {
 async function generateStrategy() {
   const industry = document.getElementById('industry-input').value;
   const goal = document.getElementById('goal-input').value;
+  const context = document.getElementById('strategy-context')?.value.trim() || "";
   const output = document.getElementById('strategy-output');
   const loader = document.getElementById('strategy-loader');
 
-  if (!industry || !goal) return;
+  if (!industry.trim() || !goal.trim()) {
+    output.style.display = "block";
+    output.innerHTML = UI_TEXT[UI_LANG].strategyEmpty;
+    return;
+  }
 
   loader.style.display = "inline-block";
   output.style.display = "block";
-  output.innerHTML = "Analizando mercado...";
+  output.innerHTML = UI_TEXT[UI_LANG].strategyLoading;
 
   try {
-    const response = await fetchWithTimeout(
-      "https://n8n-l07k.onrender.com/webhook/portfolio-ia",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "strategy",
-          industry,
-          goal
-        })
-      }
-    );
+    const response = await fetchWithTimeout(N8N_WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "strategy",
+        industry,
+        goal,
+        context,
+        question: `Genera una estrategia growth útil para esta situación. Industria: ${industry}. Objetivo: ${goal}. Contexto: ${context || "No especificado"}. Quiero un diagnóstico breve, 3 acciones priorizadas, métricas y próximos pasos concretos.`,
+        questions: `Genera una estrategia growth útil para esta situación. Industria: ${industry}. Objetivo: ${goal}. Contexto: ${context || "No especificado"}. Quiero un diagnóstico breve, 3 acciones priorizadas, métricas y próximos pasos concretos.`,
+        language: UI_LANG,
+        locale: navigator.language || UI_LANG
+      })
+    });
 
-    if (!response.ok) throw new Error("Error servidor");
+    const data = await readResponseSafe(response);
+    if (!response.ok) {
+      output.innerHTML = data?.error || data?.message || `HTTP ${response.status}`;
+      return;
+    }
 
-    const data = await response.json();
     const text = extractText(data);
-
-    output.innerHTML = text || "No se recibió respuesta válida.";
+    output.innerHTML = text || `${UI_TEXT[UI_LANG].noText}\n\n${UI_TEXT[UI_LANG].raw}\n${JSON.stringify(data, null, 2)}`;
 
   } catch (error) {
-    output.innerHTML = "Error conectando con el servidor.";
+    output.innerHTML = `${UI_TEXT[UI_LANG].error}\n${error?.message || error}`;
     console.error(error);
   } finally {
     loader.style.display = "none";
@@ -1000,43 +1285,56 @@ async function generateStrategy() {
 
 // ========= CHAT =========
 async function askAssistant() {
-  const question = document.getElementById('chat-input').value;
+  const question = document.getElementById('chat-input').value.trim();
   const output = document.getElementById('chat-output');
   const loader = document.getElementById('chat-loader');
 
-  if (!question) return;
+  if (!question) {
+    output.style.display = "block";
+    output.innerHTML = UI_TEXT[UI_LANG].empty;
+    return;
+  }
 
   loader.style.display = "inline-block";
   output.style.display = "block";
-  output.innerHTML = "Pensando...";
+  output.innerHTML = UI_TEXT[UI_LANG].loading;
 
   try {
-    const response = await fetchWithTimeout(
-      "https://n8n-l07k.onrender.com/webhook/portfolio-ia",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "chat",
-          question
-        })
-      }
-    );
+    const response = await fetchWithTimeout(N8N_WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "chat",
+        question,
+        questions: question,
+        language: UI_LANG,
+        locale: navigator.language || UI_LANG
+      })
+    });
 
-    if (!response.ok) throw new Error("Error servidor");
+    const data = await readResponseSafe(response);
+    if (!response.ok) {
+      output.innerHTML = data?.error || data?.message || `HTTP ${response.status}`;
+      return;
+    }
 
-    const data = await response.json();
     const text = extractText(data);
-
-    output.innerHTML = text || "No se recibió respuesta válida.";
+    output.innerHTML = text || `${UI_TEXT[UI_LANG].noText}\n\n${UI_TEXT[UI_LANG].raw}\n${JSON.stringify(data, null, 2)}`;
 
   } catch (error) {
-    output.innerHTML = "Error conectando con el servidor.";
+    output.innerHTML = `${UI_TEXT[UI_LANG].error}\n${error?.message || error}`;
     console.error(error);
   } finally {
     loader.style.display = "none";
   }
 }
+
+async function initializeLanguage() {
+  UI_LANG = await detectLanguageByLocation();
+  applyLanguage(UI_LANG);
+}
+
+initializeLanguage();
 
 </script>
 </body>
